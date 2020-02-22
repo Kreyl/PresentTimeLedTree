@@ -45,6 +45,24 @@ X ~ 3 200 -100 100 L 60 60 1 1 P
 ENDDRAW
 ENDDEF
 #
+# Connectors_kl_CONN_4
+#
+DEF Connectors_kl_CONN_4 XL 0 40 Y N 1 F N
+F0 "XL" -50 0 40 V V C CNN
+F1 "Connectors_kl_CONN_4" 50 0 40 V V C CNN
+F2 "" -150 -100 60 V I C CNN
+F3 "" -50 0 60 V I C CNN
+F4 "0" 350 400 60 V I C CNN "SolderPoints"
+F5 "4" 450 500 60 V I C CNN "SolderPointsDIP"
+DRAW
+S 100 200 -100 -200 0 1 0 f
+X P1 1 200 150 100 L 60 60 1 1 P
+X PM 2 200 50 100 L 60 60 1 1 P
+X ~ 3 200 -50 100 L 60 60 1 1 P
+X ~ 4 200 -150 100 L 60 60 1 1 P
+ENDDRAW
+ENDDEF
+#
 # Connectors_kl_CONN_6
 #
 DEF Connectors_kl_CONN_6 XL 0 40 Y Y 1 F N
@@ -65,27 +83,23 @@ X ~ 6 -200 -250 100 R 60 60 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Connectors_kl_USB_MICRO_4H
+# Connectors_kl_USB_A
 #
-DEF Connectors_kl_USB_MICRO_4H XL 0 40 Y Y 1 F N
+DEF Connectors_kl_USB_A XL 0 40 Y Y 1 F N
 F0 "XL" -200 450 60 H V C CNN
-F1 "Connectors_kl_USB_MICRO_4H" -100 350 60 H V C CNN
+F1 "Connectors_kl_USB_A" -100 350 60 H V C CNN
 F2 "" 0 0 60 H V C CNN
 F3 "" 0 0 60 H V C CNN
 $FPLIST
  USB*
 $ENDFPLIST
 DRAW
-S 0 -300 -400 300 0 1 0 f
-X ~ H3 -150 -500 200 U 50 50 0 1 P
-X ~ H4 -50 -500 200 U 50 50 0 1 P
+S 0 300 -300 -200 0 1 0 f
 X UVcc 1 200 200 200 L 50 50 1 1 w
 X D- 2 200 100 200 L 50 50 1 1 P
 X D+ 3 200 0 200 L 50 50 1 1 P
-X UID 4 200 -100 200 L 50 50 1 1 P
-X UGND 5 200 -200 200 L 50 50 1 1 w
-X ~ H1 -350 -500 200 U 50 50 1 1 P
-X ~ H2 -250 -500 200 U 50 50 1 1 P
+X UGND 4 200 -100 200 L 50 50 1 1 w
+X ~ SHLD -150 -400 200 U 50 50 1 1 I
 ENDDRAW
 ENDDEF
 #
@@ -377,39 +391,25 @@ X ~ 2 0 -250 100 U 60 60 1 1 P
 ENDDRAW
 ENDDEF
 #
-# pcb_details_HOLE_METALLED
+# Tittar_kl_ZenerBidir
 #
-DEF pcb_details_HOLE_METALLED HOLE 0 40 Y Y 1 F N
-F0 "HOLE" -500 -50 60 H V C CNN
-F1 "pcb_details_HOLE_METALLED" -550 50 60 H V C CNN
-F2 "" -600 -150 60 H I C CNN
-F3 "" -500 -50 60 H I C CNN
-F4 "0" -400 50 60 H I C CNN "Price"
-F5 "0" -300 150 60 H I C CNN "SolderPoints"
-F6 "1" 0 0 79 H I C CNN "DoNotBOM"
+DEF Tittar_kl_ZenerBidir D 0 40 N N 1 F N
+F0 "D" -50 100 40 H V C CNN
+F1 "Tittar_kl_ZenerBidir" 0 -100 40 H V C CNN
+F2 "" -300 450 60 H V C CNN
+F3 "" -300 450 60 H V C CNN
+F4 "ESD Protection Zener" 0 0 50 H I C CNN "Description"
+F5 "Bidir Zener" 0 0 50 H I C CNN "Type"
 $FPLIST
- HOLE*
+ D*
 $ENDFPLIST
 DRAW
-C 0 0 100 0 1 0 f
-X ~ H 300 0 200 L 50 50 1 1 P
-ENDDRAW
-ENDDEF
-#
-# pcb_details_Logo
-#
-DEF pcb_details_Logo Logo 0 40 Y Y 1 F N
-F0 "Logo" -100 450 60 H V C CNN
-F1 "pcb_details_Logo" 200 450 60 H V C CNN
-F2 "" 0 0 60 H V C CNN
-F3 "" 0 0 60 H V C CNN
-DRAW
-P 2 0 1 0 -250 0 250 0 N
-P 2 0 1 0 -150 150 150 -150 N
-P 2 0 1 0 0 400 0 -400 N
-P 2 0 1 0 150 150 -150 -150 N
-P 9 0 1 0 -50 50 0 400 50 50 250 0 50 -50 0 -400 -50 -50 -250 0 -50 50 N
-P 9 0 1 0 0 50 150 150 50 0 150 -150 0 -50 -150 -150 -50 0 -150 150 0 50 N
+P 2 0 1 0 0 50 25 50 N
+P 3 0 1 0 0 50 0 -50 -25 -50 N
+P 5 0 1 0 0 0 -100 -50 -100 50 0 0 -100 0 N
+P 5 0 1 0 0 0 100 50 100 -50 0 0 100 0 N
+X ~ A -200 0 100 R 40 40 1 1 P
+X ~ C 200 0 100 L 40 40 1 1 P
 ENDDRAW
 ENDDEF
 #
