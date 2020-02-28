@@ -3,3 +3,7 @@
 *.kicad_pcb-bak
 *.ses
 *.fsxview
+LedTree_fw/.settings/com.atollic.truestudio.debug.hardware_device.prefs
+LedTree_fw/.settings/language.settings.xml
+LedTree_fw/.settings/org.eclipse.cdt.codan.core.prefs
+LedTree_fw/.settings/org.eclipse.cdt.managedbuilder.core.prefs
