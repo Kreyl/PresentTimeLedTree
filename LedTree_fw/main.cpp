@@ -5,6 +5,9 @@
 #include "uart.h"
 #include "usb_msd.h"
 #include "SimpleSensors.h"
+#include "led.h"
+#include "Sequences.h"
+#include <vector>
 
 #if 1 // ======================== Variables & prototypes =======================
 // Forever
@@ -16,15 +19,27 @@ void OnCmd(Shell_t *PShell);
 void ITask();
 
 bool UsbIsConnected = false;
-
-//PinOutput_t Led{LED_INDICATION};
-
 static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic}; // Measure battery periodically
+
+#if 1 // ==== LEDs ====
+#define LED_FREQ_HZ     630
+LedBlinker_t LedInd{LED_INDICATION};
+std::vector<LedSmooth_t> Leds = {
+        {LED1_PIN, LED_FREQ_HZ},
+        {LED2_PIN, LED_FREQ_HZ},
+        {LED3_PIN, LED_FREQ_HZ},
+        {LED4_PIN, LED_FREQ_HZ},
+        {LED5_PIN, LED_FREQ_HZ},
+};
+//LedSmooth_t Leds[LED_CNT] = {&Led1, &Led2, &Led3, &Led4};;
+#endif // LEDs
 #endif
 
 int main(void) {
     // Setup clock frequency
-    Clk.SetCoreClk(cclk64MHz);
+    Clk.SetCoreClk(cclk48MHz);
+    // 48MHz clock
+    Clk.SetupSai1Qas48MhzSrc();
     Clk.UpdateFreqValues();
     // Init OS
     halInit();
@@ -37,8 +52,22 @@ int main(void) {
     Printf("\r%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
     Clk.PrintFreqs();
 
-//    Led.Init();
-    PinSetupOut(LED_INDICATION, omPushPull);
+    // Disable dualbank if enabled
+    if(Flash::DualbankIsEnabled()) {
+        Printf("Dualbank enabled, disabling\r");
+        chThdSleepMilliseconds(45);
+        Flash::DisableDualbank();   // Will reset inside
+    }
+
+    // ==== Leds ====
+    LedInd.Init();
+    LedInd.StartOrRestart(lsqIdle);
+    for(LedSmooth_t &Led : Leds) {
+        Led.Init();
+    }
+
+    UsbMsd.Init();
+    SimpleSensors::Init();
     TmrOneSecond.StartOrRestart();
 
     // Main cycle
@@ -53,6 +82,7 @@ void ITask() {
             case evtIdShellCmd:
                 OnCmd((Shell_t*)Msg.Ptr);
                 ((Shell_t*)Msg.Ptr)->SignalCmdProcessed();
+                LedInd.StartOrRestart(lsqCmd);
                 break;
 
 //            case evtIdButtons:
@@ -61,7 +91,7 @@ void ITask() {
 
             case evtIdEverySecond:
 //                Printf("Second\r");
-                PinToggle(LED_INDICATION); // Blink LED
+                LedInd.StartOrRestart(lsqIdle);
                 break;
 
 
@@ -102,11 +132,12 @@ void OnCmd(Shell_t *PShell) {
     else if(PCmd->NameIs("Version")) PShell->Print("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
     else if(PCmd->NameIs("mem")) PrintMemoryInfo();
 
-    else if(PCmd->NameIs("mul")) {
-        int32_t v1, v2;
-        PCmd->GetNext<int32_t>(&v1);
-        PCmd->GetNext<int32_t>(&v2);
-        PShell->Print("mul: %d\r", v1*v2);
+    else if(PCmd->NameIs("Set")) {
+        uint32_t indx, value;
+        if(PCmd->GetNext<uint32_t>(&indx)  != retvOk or indx >= Leds.size()) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint32_t>(&value) != retvOk) { PShell->Ack(retvCmdError); return; }
+        Leds[indx].SetBrightness(value);
+        PShell->Ack(retvOk);
     }
 
     else PShell->Ack(retvCmdUnknown);

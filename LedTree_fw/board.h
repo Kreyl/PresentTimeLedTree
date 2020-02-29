@@ -24,7 +24,7 @@
 //  Periphery
 #define SIMPLESENSORS_ENABLED   TRUE
 
-#define ADC_REQUIRED            FALSE
+#define ADC_REQUIRED            TRUE
 #define STM32_DMA_REQUIRED      TRUE    // Leave this macro name for OS
 
 #if 1 // ========================== GPIO =======================================
@@ -44,7 +44,7 @@
 #define UART_RX_PIN     10
 
 // LEDs
-#define LED_INDICATION  GPIOB, 0
+#define LED_INDICATION  GPIOB, 0, omPushPull
 #define LED_BRIGHTNESS_MAX  255 // Top brightness value
 #define LED1_PIN        { GPIOB, 5, TIM3, 2, invNotInverted, omPushPull, LED_BRIGHTNESS_MAX }
 #define LED2_PIN        { GPIOB, 6, TIM4, 1, invNotInverted, omPushPull, LED_BRIGHTNESS_MAX }

@@ -13,7 +13,7 @@
 
 // Endpoints to be used for USBD2
 #define EP_MSD_IN_ID        1
-#define EP_MSD_OUT_ID       2
+#define EP_MSD_OUT_ID       1
 
 // Endpoint Sizes for Full-Speed devices
 #define EP0_SZ              64  // Control Endpoint must have a packet size of 64 bytes

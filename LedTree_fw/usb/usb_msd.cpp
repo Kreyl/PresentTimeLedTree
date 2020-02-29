@@ -220,7 +220,7 @@ void UsbMsd_t::Reset() {
 
 void UsbMsd_t::Connect() {
     usbDisconnectBus(&USBDrv);
-    chThdSleepMilliseconds(500);
+    chThdSleepMilliseconds(99);
     usbStart(&USBDrv, &UsbCfg);
     usbConnectBus(&USBDrv);
 }
