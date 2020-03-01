@@ -9,6 +9,9 @@
 
 // ==== General ====
 #define APP_NAME            "LedTree"
+#ifndef TRUE
+#define TRUE 1
+#endif
 
 // MCU type as defined in the ST header.
 #define STM32L476xx
@@ -35,8 +38,8 @@
 #define ENCA_PIN        GPIOA, 0
 #define ENCB_PIN        GPIOA, 1
 
-// Resistor
-#define RESISTOR_PIN    GPIOC, 0
+// Resistor ADC input
+#define RESISTOR_PIN    GPIOC, 0, 1 // PC0, ADC channel 1
 
 // UART
 #define UART_GPIO       GPIOA
@@ -61,19 +64,6 @@
 
 #endif // GPIO
 
-#if ADC_REQUIRED // ======================= Inner ADC ==========================
-// Clock divider: clock is generated from the APB2
-#define ADC_CLK_DIVIDER		adcDiv2
-
-// ADC channels
-#define ADC_BATTERY_CHNL 	14
-// ADC_VREFINT_CHNL
-#define ADC_CHANNELS        { ADC_BATTERY_CHNL, ADC_VREFINT_CHNL }
-#define ADC_CHANNEL_CNT     2   // Do not use countof(AdcChannels) as preprocessor does not know what is countof => cannot check
-#define ADC_SAMPLE_TIME     ast24d5Cycles
-#define ADC_OVERSAMPLING_RATIO  64   // 1 (no oversampling), 2, 4, 8, 16, 32, 64, 128, 256
-#endif
-
 #if 1 // =========================== DMA =======================================
 // ==== Uart ====
 // Remap is made automatically if required
@@ -84,7 +74,7 @@
 #define UART_DMA_RX_MODE(Chnl) (STM32_DMA_CR_CHSEL(Chnl) | DMA_PRIORITY_MEDIUM | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_P2M | STM32_DMA_CR_CIRC)
 
 #if ADC_REQUIRED
-#define ADC_DMA         STM32_DMA1_STREAM1
+#define ADC_DMA         STM32_DMA_STREAM_ID(1, 1)
 #define ADC_DMA_MODE    STM32_DMA_CR_CHSEL(0) |   /* DMA1 Stream1 Channel0 */ \
                         DMA_PRIORITY_LOW | \
                         STM32_DMA_CR_MSIZE_HWORD | \

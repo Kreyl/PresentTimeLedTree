@@ -8,6 +8,7 @@
 #include "led.h"
 #include "Sequences.h"
 #include <vector>
+#include "adcL476.h"
 
 #if 1 // ======================== Variables & prototypes =======================
 // Forever
@@ -20,6 +21,7 @@ void ITask();
 
 bool UsbIsConnected = false;
 static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic}; // Measure battery periodically
+#endif
 
 #if 1 // ==== LEDs ====
 #define LED_FREQ_HZ     630
@@ -31,15 +33,51 @@ std::vector<LedSmooth_t> Leds = {
         {LED4_PIN, LED_FREQ_HZ},
         {LED5_PIN, LED_FREQ_HZ},
 };
-//LedSmooth_t Leds[LED_CNT] = {&Led1, &Led2, &Led3, &Led4};;
 #endif // LEDs
+
+#if 1 // ADC
+void OnAdcDoneI();
+
+const AdcSetup_t AdcSetup = {
+        .SampleTime = ast640d5Cycles,  //ast24d5Cycles,
+        .Oversampling = AdcSetup_t::oversmpDis, //AdcSetup_t::oversmp8,
+        .DoneCallback = OnAdcDoneI,
+        .Channels = {
+                {RESISTOR_PIN},
+                {RESISTOR_PIN},
+                {RESISTOR_PIN},
+                {RESISTOR_PIN},
+        }
+};
 #endif
+
 
 int main(void) {
     // Setup clock frequency
-    Clk.SetCoreClk(cclk48MHz);
-    // 48MHz clock
-    Clk.SetupSai1Qas48MhzSrc();
+    if(Clk.EnableHSE() == retvOk) {
+        Clk.SetVoltageRange(mvrHiPerf);
+        Clk.SetupFlashLatency(64, mvrHiPerf);
+        Clk.SetupPllMulDiv(3, 32, 2, 4); // 12MHz / 3 = 4; 4*32 / 2 => 64
+        Clk.SetupBusDividers(ahbDiv1, apbDiv1, apbDiv1);
+        if(Clk.EnablePLL() == retvOk) {
+            Clk.EnablePLLROut(); // main output
+            Clk.SwitchToPLL();
+        }
+        // 48MHz clock for USB & 24MHz clock for ADC
+        Clk.SetupPllSai1(8, 4, 2, 7); // 12 * 8 = 96; R = 96 / 4 = 24, Q = 96 / 2 = 48
+        if(Clk.EnableSai1() == retvOk) {
+            // Setup Sai1R as ADC source
+            Clk.EnableSai1ROut();
+            uint32_t tmp = RCC->CCIPR;
+            tmp &= ~RCC_CCIPR_ADCSEL;
+            tmp |= 0b01UL << 28; // SAI1R is ADC clock
+            // Setup Sai1Q as 48MHz source
+            Clk.EnableSai1QOut();
+            tmp &= ~RCC_CCIPR_CLK48SEL;
+            tmp |= ((uint32_t)src48PllSai1Q) << 26;
+            RCC->CCIPR = tmp;
+        }
+    }
     Clk.UpdateFreqValues();
     // Init OS
     halInit();
@@ -52,7 +90,7 @@ int main(void) {
     Printf("\r%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
     Clk.PrintFreqs();
 
-    // Disable dualbank if enabled
+    // Disable dualbank if enabled. Otherwise USB MSD will not be able to write flash.
     if(Flash::DualbankIsEnabled()) {
         Printf("Dualbank enabled, disabling\r");
         chThdSleepMilliseconds(45);
@@ -69,6 +107,10 @@ int main(void) {
     UsbMsd.Init();
     SimpleSensors::Init();
     TmrOneSecond.StartOrRestart();
+    // Inner ADC
+    Adc.Init(AdcSetup);
+    Adc.EnableVref();
+    Adc.StartPeriodicMeasurement(1);
 
     // Main cycle
     ITask();
@@ -91,9 +133,12 @@ void ITask() {
 
             case evtIdEverySecond:
 //                Printf("Second\r");
-                LedInd.StartOrRestart(lsqIdle);
+//                Adc.StartSingleMeasurement();
                 break;
 
+            case evtIdADC:
+                PrintfI("ADC: %u\r", Msg.Value);
+                break;
 
 #if 1       // ======= USB =======
             case evtIdUsbConnect:
@@ -124,6 +169,13 @@ void ProcessUsbDetect(PinSnsState_t *PState, uint32_t Len) {
     }
 }
 
+void OnAdcDoneI() {
+    AdcBuf_t &FBuf = Adc.GetBuf();
+    PrintfI("%u %u %u %u\r", FBuf[0], FBuf[1], FBuf[2], FBuf[3]);
+//    int32_t ResValue = FBuf[0];
+//    EvtQMain.SendNowOrExitI(EvtMsg_t(evtIdADC, ResValue));
+}
+
 #if 1 // ======================= Command processing ============================
 void OnCmd(Shell_t *PShell) {
 	Cmd_t *PCmd = &PShell->Cmd;
@@ -131,6 +183,11 @@ void OnCmd(Shell_t *PShell) {
     if(PCmd->NameIs("Ping")) PShell->Ack(retvOk);
     else if(PCmd->NameIs("Version")) PShell->Print("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
     else if(PCmd->NameIs("mem")) PrintMemoryInfo();
+
+    else if(PCmd->NameIs("adc")) {
+        Printf("ISR: %X; CR: %X; CFGR: %X\r", ADC1->ISR, ADC1->CR, ADC1->CFGR);
+
+    }
 
     else if(PCmd->NameIs("Set")) {
         uint32_t indx, value;

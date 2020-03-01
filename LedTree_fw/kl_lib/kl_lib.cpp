@@ -423,17 +423,25 @@ void PinOutputPWM_t::Init() const {
 void Timer_t::SetUpdateFrequencyChangingPrescaler(uint32_t FreqHz) const {
     // Figure out input timer freq
     uint32_t UpdFreqMax = Clk.GetTimInputFreq(ITmr) / (ITmr->ARR + 1);
-    uint32_t div = UpdFreqMax / FreqHz;
-    if(div != 0) div--;
+    uint32_t Psc = UpdFreqMax / FreqHz;
+    if(Psc != 0) Psc--;
 //    Uart.Printf("InputFreq=%u; UpdFreqMax=%u; div=%u; ARR=%u\r", InputFreq, UpdFreqMax, div, ITmr->ARR);
-    ITmr->PSC = div;
+    ITmr->PSC = Psc;
     ITmr->CNT = 0;  // Reset counter to start from scratch
 }
 
 void Timer_t::SetUpdateFrequencyChangingTopValue(uint32_t FreqHz) const {
-    uint32_t TopVal  = (Clk.GetTimInputFreq(ITmr) / FreqHz) - 1;
-//    Uart.Printf("Topval = %u\r", TopVal);
+    uint32_t UpdFreqMax = Clk.GetTimInputFreq(ITmr) / (ITmr->PSC + 1);
+    uint32_t TopVal  = (UpdFreqMax / FreqHz);
+    if(TopVal != 0) TopVal--;
     SetTopValue(TopVal);
+    ITmr->CNT = 0;  // Reset counter to start from scratch
+}
+
+void Timer_t::SetUpdateFrequencyChangingBoth(uint32_t FreqHz) const {
+    uint32_t Psc = (Clk.GetTimInputFreq(ITmr) / FreqHz) / 0x10000;
+    ITmr->PSC = Psc;
+    SetUpdateFrequencyChangingTopValue(FreqHz);
 }
 #endif
 

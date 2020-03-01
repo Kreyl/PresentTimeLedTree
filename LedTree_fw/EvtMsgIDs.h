@@ -13,6 +13,7 @@ enum EvtMsgId_t {
     // Pretending to eternity
     evtIdShellCmd,
     evtIdEverySecond,
+    evtIdADC,
 
     // Audio
     evtIdSoundPlayEnd,
@@ -27,5 +28,4 @@ enum EvtMsgId_t {
 
     // Misc periph
     evtIdButtons,
-    evtIdAcc,
 };

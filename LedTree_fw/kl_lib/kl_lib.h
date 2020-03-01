@@ -501,6 +501,7 @@ public:
     void Disable() const { TMR_DISABLE(ITmr); }
     void SetUpdateFrequencyChangingPrescaler(uint32_t FreqHz) const;
     void SetUpdateFrequencyChangingTopValue(uint32_t FreqHz) const;
+    void SetUpdateFrequencyChangingBoth(uint32_t FreqHz) const;
     void SetTopValue(uint32_t Value) const { ITmr->ARR = Value; }
     uint32_t GetTopValue() const { return ITmr->ARR; }
     void EnableArrBuffering()  const { ITmr->CR1 |=  TIM_CR1_ARPE; }
@@ -557,6 +558,7 @@ public:
     void ClearCompare3IrqPendingBit() const { ITmr->SR &= ~TIM_SR_CC3IF; }
     void ClearCompare4IrqPendingBit() const { ITmr->SR &= ~TIM_SR_CC4IF; }
     // Check
+    bool IsEnabled() const { return (ITmr->CR1 & TIM_CR1_CEN); }
     bool IsUpdateIrqFired() const { return (ITmr->SR & TIM_SR_UIF); }
     bool IsCompare1IrqFired() const { return (ITmr->SR & TIM_SR_CC1IF); }
     bool IsCompare2IrqFired() const { return (ITmr->SR & TIM_SR_CC2IF); }
@@ -851,7 +853,7 @@ static inline void PinSetupAnalog(GPIO_TypeDef *PGpioPort, const uint16_t APinNu
 #endif
 }
 
-#ifdef STM32L476
+#ifdef STM32L4XX
 static inline void PinConnectAdc(GPIO_TypeDef *PGpioPort, const uint16_t APinNumber) {
     SET_BIT(PGpioPort->ASCR, 1<<APinNumber);
 }
@@ -1911,13 +1913,6 @@ enum i2cClk_t { i2cclkPCLK1 = 0, i2cclkSYSCLK = 1, i2cclkHSI = 2 };
 enum uartClk_t {uartclkPCLK = 0, uartclkSYSCLK = 1, uartclkHSI = 2, uartclkLSE = 3 };
 
 class Clk_t {
-private:
-    uint8_t EnableHSE();
-    uint8_t EnablePLL();
-    void EnablePLLROut() { RCC->PLLCFGR |= RCC_PLLCFGR_PLLREN; }
-    void EnablePLLQOut() { RCC->PLLCFGR |= RCC_PLLCFGR_PLLQEN; }
-
-    uint8_t EnableSai1();
 public:
     // Frequency values
     uint32_t AHBFreqHz;     // HCLK: AHB Buses, Core, Memory, DMA
@@ -1931,7 +1926,12 @@ public:
 
     uint8_t EnableHSI();
     uint8_t EnableMSI();
+    uint8_t EnableHSE();
+    uint8_t EnablePLL();
     void EnableLSE()  { RCC->BDCR |= RCC_BDCR_LSEON; }
+    void EnablePLLROut() { RCC->PLLCFGR |= RCC_PLLCFGR_PLLREN; }
+    void EnablePLLQOut() { RCC->PLLCFGR |= RCC_PLLCFGR_PLLQEN; }
+    uint8_t EnableSai1();
 
     void DisableHSE() { RCC->CR &= ~RCC_CR_HSEON; }
     void DisableHSI() { RCC->CR &= ~RCC_CR_HSION; }
