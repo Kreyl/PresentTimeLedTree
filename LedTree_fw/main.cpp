@@ -26,7 +26,7 @@ static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic}; // 
 #if 1 // ==== LEDs ====
 #define LED_FREQ_HZ     630
 LedBlinker_t LedInd{LED_INDICATION};
-std::vector<LedSmooth_t> Leds = {
+std::vector<LedSmoothWBrt_t> Leds = {
         {LED1_PIN, LED_FREQ_HZ},
         {LED2_PIN, LED_FREQ_HZ},
         {LED3_PIN, LED_FREQ_HZ},
@@ -97,7 +97,7 @@ int main(void) {
     // ==== Leds ====
     LedInd.Init();
     LedInd.StartOrRestart(lsqIdle);
-    for(LedSmooth_t &Led : Leds) {
+    for(LedSmoothWBrt_t &Led : Leds) {
         Led.Init();
     }
 
@@ -107,7 +107,7 @@ int main(void) {
     // Inner ADC
     Adc.Init(AdcSetup);
     Adc.EnableVref();
-    Adc.StartPeriodicMeasurement(10);
+    Adc.StartPeriodicMeasurement(54);
 
     // Main cycle
     ITask();
@@ -128,9 +128,13 @@ void ITask() {
 //                Printf("Second\r");
                 break;
 
-            case evtIdADC:
-                PrintfI("ADC: %u\r", Msg.Value);
-                break;
+            case evtIdADC: {
+                // Convert [0;4095] to [0; 255]
+                uint32_t Brt = (Msg.Value * LED_SMOOTH_MAX_BRT) / 4096;
+//                PrintfI("ADC: %u; Brt: %u\r", Msg.Value, Brt);
+//                PrintfI("ADC: %u\r", Msg.Value);
+                for(LedSmoothWBrt_t &Led : Leds) Led.SetBrightness(Brt);
+            } break;
 
 #if 1       // ======= USB =======
             case evtIdUsbConnect:
@@ -178,7 +182,15 @@ void OnCmd(Shell_t *PShell) {
         uint32_t indx, value;
         if(PCmd->GetNext<uint32_t>(&indx)  != retvOk or indx >= Leds.size()) { PShell->Ack(retvCmdError); return; }
         if(PCmd->GetNext<uint32_t>(&value) != retvOk) { PShell->Ack(retvCmdError); return; }
-        Leds[indx].SetBrightness(value);
+        Leds[indx].Set(value);
+        PShell->Ack(retvOk);
+    }
+
+    else if(PCmd->NameIs("Brt")) {
+        uint32_t indx, brt;
+        if(PCmd->GetNext<uint32_t>(&indx)  != retvOk or indx >= Leds.size()) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint32_t>(&brt) != retvOk) { PShell->Ack(retvCmdError); return; }
+        Leds[indx].SetBrightness(brt);
         PShell->Ack(retvOk);
     }
 
