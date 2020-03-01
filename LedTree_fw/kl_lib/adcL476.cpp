@@ -18,51 +18,26 @@ static const Timer_t ITmr(ADC_TIM);
 
 // Wrapper for IRQ
 extern "C"
-void AdcTxIrq(void *p, uint32_t flags) { Adc.IOnDmaIrq(); }
+void AdcTxIrq(void *p, uint32_t flags) {
+    chSysLockFromISR();
+    Adc.IOnDmaIrq();
+    chSysUnlockFromISR();
+}
 
 void Adc_t::IOnDmaIrq() {
-    PrintfI("i\r");
     dmaStreamDisable(PDma);
     // Switch buffers
     if(PBufW == &IBuf1) { PBufW = &IBuf2; PBufR = &IBuf1; }
     else                { PBufW = &IBuf1; PBufR = &IBuf2; }
     // Restart DMA in case of Periodic Conversion Mode
-//    if(ITmr.IsEnabled()) {
+    if(ITmr.IsEnabled()) {
         dmaStreamSetMemory0(PDma, PBufW->data());
         dmaStreamSetTransactionSize(PDma, PBufW->size());
         dmaStreamSetMode(PDma, ADC_DMA_MODE);
         dmaStreamEnable(PDma);
-//        ADC1->CR |= ADC_CR_ADSTART;
-//    }
-      PrintfI("isr: %X; cr: %X\r", ADC1->ISR, ADC1->CR);
-
+    }
     // Signal event
-    if(ICallback != nullptr) {
-        chSysLockFromISR();
-        ICallback();
-        chSysUnlockFromISR();
-    }
-}
-
-extern "C"
-void Vector88() {
-    CH_IRQ_PROLOGUE();
-    chSysLockFromISR();
-    PrintfI("****\r");
-    uint32_t isr;
-    while(true) {
-         isr = ADC1->ISR;
-         if(isr & 0x4) {
-             PrintfI("isr1: %X; v: %u\r", isr, ADC1->DR);
-         }
-         else break;
-    }
-    isr = ADC1->ISR;
-    ADC1->ISR |= isr;
-    PrintfI("isr: %X; cr: %X\r", isr, ADC1->CR);
-
-    chSysUnlockFromISR();
-    CH_IRQ_EPILOGUE();
+    if(ICallback != nullptr) ICallback();
 }
 
 void Adc_t::Init(const AdcSetup_t& Setup) {
@@ -103,14 +78,34 @@ void Adc_t::Init(const AdcSetup_t& Setup) {
     dmaStreamSetPeripheral(PDma, &ADC1->DR);
     dmaStreamSetMode      (PDma, ADC_DMA_MODE);
     ADC1->CFGR |= ADC_CFGR_DMACFG | ADC_CFGR_DMAEN; // DMA is in circ mode, DMA en
+}
 
-//    ADC1->IER |= 0b100; // EOC
-//    nvicEnableVector(ADC1_2_IRQn, IRQ_PRIO_HIGH);
+static bool IsEnabled() { return (ADC1->CR & ADC_CR_ADEN); }
+
+static void Calibrate() {
+    ADC1->CR &= ~ADC_CR_ADCALDIF;   // Calibration for single-ended inputs
+    ADC1->CR |= ADC_CR_ADCAL;        // Start calibration
+    while((ADC1->CR & ADC_CR_ADCAL) != 0);   // Let it to complete
+    // ADEN bit cannot be set during ADCAL=1 and 4 ADC clock cycle after the ADCAL bit is cleared by hardware(end of the calibration).
+    for(volatile uint32_t i=0; i<99; i++) __NOP();
+}
+
+static void StopAndDisable() {
+    if(IsEnabled()) {
+        SET_BIT(ADC1->CR, ADC_CR_ADSTP);    // Stop any ongoing conversion
+        while(READ_BIT(ADC1->CR, ADC_CR_ADSTP) != 0);   // Let it to complete
+        ADC1->CR |= ADC_CR_ADDIS; // Disable
+        while(IsEnabled());   // Let it to complete
+    }
+}
+
+static inline void StartConversion() {
+    ADC1->CR |= ADC_CR_ADSTART;
 }
 
 void Adc_t::Deinit() {
+    StopAndDisable();
     ITmr.Deinit();
-    ADC1->CR |= ADC_CR_ADDIS; // Disable
     DisableVref();
     rccDisableADC123(); // Disable clock
 }
@@ -163,25 +158,9 @@ void Adc_t::SetSequenceItem(uint8_t SeqIndx, uint32_t AChnl) {
     }
 }
 
-static bool IsEnabled() { return (ADC1->CR & ADC_CR_ADEN); }
-
-static void Calibrate() {
-    ADC1->CR &= ~ADC_CR_ADCALDIF;   // Calibration for single-ended inputs
-    ADC1->CR |= ADC_CR_ADCAL;        // Start calibration
-    while((ADC1->CR & ADC_CR_ADCAL) != 0);   // Let it to complete
-    // ADEN bit cannot be set during ADCAL=1 and 4 ADC clock cycle after the ADCAL bit is cleared by hardware(end of the calibration).
-    for(volatile uint32_t i=0; i<99; i++) __NOP();
-}
-
 // Service routine
 void Adc_t::DisableCalibrateEnableSetDMA() {
-    // Stop and disable
-    if(IsEnabled()) {
-        SET_BIT(ADC1->CR, ADC_CR_ADSTP);    // Stop any ongoing conversion
-        while(READ_BIT(ADC1->CR, ADC_CR_ADSTP) != 0);   // Let it to complete
-        ADC1->CR |= ADC_CR_ADDIS; // Disable
-        while(IsEnabled());   // Let it to complete
-    }
+    StopAndDisable();
     Calibrate();
     // Enable
     SET_BIT(ADC1->ISR, ADC_ISR_ADRDY);  // Clear ADRDY bit by writing 1 to it
@@ -201,33 +180,17 @@ void Adc_t::DisableCalibrateEnableSetDMA() {
 // Start sequence conversion and run callback when done
 void Adc_t::StartSingleMeasurement() {
     DisableCalibrateEnableSetDMA();
-    Printf("ISR: %X; CR: %X; CFGR: %X\r", ADC1->ISR, ADC1->CR, ADC1->CFGR);
-    // Start Conversion
-    ADC1->CR |= ADC_CR_ADSTART;
+    StartConversion();
 }
 
 // Start periodic conversions, run callback every time when done
 void Adc_t::StartPeriodicMeasurement(uint32_t FSmpHz) {
     DisableCalibrateEnableSetDMA();
-    Printf("ISR: %X; CR: %X; CFGR: %X\r", ADC1->ISR, ADC1->CR, ADC1->CFGR);
     // Enable trigger
     ADC1->CFGR &= ~(0b1111UL << ADC_CFGR_EXTSEL_Pos); // Clear it
     ADC1->CFGR |=  (0b1101UL << ADC_CFGR_EXTSEL_Pos); // EXT13 = TIM6_TRGO
     ADC1->CFGR |=  (0b01UL   << ADC_CFGR_EXTEN_Pos);  // trigger detection on the rising edge
-    Printf("ISR: %X; CR: %X; CFGR: %X\r", ADC1->ISR, ADC1->CR, ADC1->CFGR);
-
-//    ADC1->CFGR |= ADC_CFGR_OVRMOD;
-//    ADC1->CFGR |= ADC_CFGR_CONT;
-//    Printf("ISR: %X; CR: %X; CFGR: %X\r", ADC1->ISR, ADC1->CR, ADC1->CFGR);
-
-//    nvicEnableVector(ADC1_2_IRQn, IRQ_PRIO_LOW);
-//    ADC1->IER |= 0b11100;
-
-    Printf("CFGR2: %X; SQR1: %X\r", ADC1->CFGR2, ADC1->SQR1);
-
-    // Start conversion
-    ADC1->CR |= ADC_CR_ADSTART;
-    Printf("ISR: %X; CR: %X; CFGR: %X\r", ADC1->ISR, ADC1->CR, ADC1->CFGR);
+    StartConversion();
     // Setup timer
     ITmr.Init();
     ITmr.SetUpdateFrequencyChangingBoth(FSmpHz);

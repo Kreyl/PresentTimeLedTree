@@ -39,13 +39,10 @@ std::vector<LedSmooth_t> Leds = {
 void OnAdcDoneI();
 
 const AdcSetup_t AdcSetup = {
-        .SampleTime = ast640d5Cycles,  //ast24d5Cycles,
-        .Oversampling = AdcSetup_t::oversmpDis, //AdcSetup_t::oversmp8,
+        .SampleTime = ast24d5Cycles,
+        .Oversampling = AdcSetup_t::oversmp8,
         .DoneCallback = OnAdcDoneI,
         .Channels = {
-                {RESISTOR_PIN},
-                {RESISTOR_PIN},
-                {RESISTOR_PIN},
                 {RESISTOR_PIN},
         }
 };
@@ -110,7 +107,7 @@ int main(void) {
     // Inner ADC
     Adc.Init(AdcSetup);
     Adc.EnableVref();
-    Adc.StartPeriodicMeasurement(1);
+    Adc.StartPeriodicMeasurement(10);
 
     // Main cycle
     ITask();
@@ -127,13 +124,8 @@ void ITask() {
                 LedInd.StartOrRestart(lsqCmd);
                 break;
 
-//            case evtIdButtons:
-//                Printf("BtnType %u; Btns %A\r", Msg.BtnEvtInfo.Type, Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.BtnCnt, ' ');
-//                break;
-
             case evtIdEverySecond:
 //                Printf("Second\r");
-//                Adc.StartSingleMeasurement();
                 break;
 
             case evtIdADC:
@@ -171,9 +163,7 @@ void ProcessUsbDetect(PinSnsState_t *PState, uint32_t Len) {
 
 void OnAdcDoneI() {
     AdcBuf_t &FBuf = Adc.GetBuf();
-    PrintfI("%u %u %u %u\r", FBuf[0], FBuf[1], FBuf[2], FBuf[3]);
-//    int32_t ResValue = FBuf[0];
-//    EvtQMain.SendNowOrExitI(EvtMsg_t(evtIdADC, ResValue));
+    EvtQMain.SendNowOrExitI(EvtMsg_t(evtIdADC, FBuf[0]));
 }
 
 #if 1 // ======================= Command processing ============================
@@ -183,11 +173,6 @@ void OnCmd(Shell_t *PShell) {
     if(PCmd->NameIs("Ping")) PShell->Ack(retvOk);
     else if(PCmd->NameIs("Version")) PShell->Print("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
     else if(PCmd->NameIs("mem")) PrintMemoryInfo();
-
-    else if(PCmd->NameIs("adc")) {
-        Printf("ISR: %X; CR: %X; CFGR: %X\r", ADC1->ISR, ADC1->CR, ADC1->CFGR);
-
-    }
 
     else if(PCmd->NameIs("Set")) {
         uint32_t indx, value;
