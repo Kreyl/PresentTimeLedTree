@@ -35,8 +35,6 @@
 									<listOptionValue builtIn="false" value="../os/hal"/>
 									<listOptionValue builtIn="false" value="../os/include"/>
 									<listOptionValue builtIn="false" value="../os/stm32L4xx"/>
-									<listOptionValue builtIn="false" value="../kl_lib"/>
-									<listOptionValue builtIn="false" value="../usb"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.interwork.699365098" name="Mix ARM/Thumb" superClass="com.atollic.truestudio.common_options.target.interwork" useByScannerDiscovery="false"/>
 								<inputType id="com.atollic.truestudio.as.input.1578497158" name="Input" superClass="com.atollic.truestudio.as.input"/>
@@ -53,6 +51,7 @@
 									<listOptionValue builtIn="false" value="../os/stm32L4xx"/>
 									<listOptionValue builtIn="false" value="../kl_lib"/>
 									<listOptionValue builtIn="false" value="../usb"/>
+									<listOptionValue builtIn="false" value="../Filesys"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.endianess.714620159" name="Endianess" superClass="com.atollic.truestudio.common_options.target.endianess" useByScannerDiscovery="false"/>
 								<option id="com.atollic.truestudio.common_options.target.mcpu.2127270736" name="Microcontroller" superClass="com.atollic.truestudio.common_options.target.mcpu" useByScannerDiscovery="false" value="STM32L476RC" valueType="enumerated"/>
@@ -88,6 +87,7 @@
 									<listOptionValue builtIn="false" value="../os/stm32L4xx"/>
 									<listOptionValue builtIn="false" value="../kl_lib"/>
 									<listOptionValue builtIn="false" value="../usb"/>
+									<listOptionValue builtIn="false" value="../Filesys"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.endianess.2012626360" name="Endianess" superClass="com.atollic.truestudio.common_options.target.endianess" useByScannerDiscovery="false"/>
 								<option id="com.atollic.truestudio.common_options.target.mcpu.2085951826" name="Microcontroller" superClass="com.atollic.truestudio.common_options.target.mcpu" useByScannerDiscovery="false" value="STM32L476RC" valueType="enumerated"/>
@@ -174,8 +174,6 @@
 									<listOptionValue builtIn="false" value="../os/hal"/>
 									<listOptionValue builtIn="false" value="../os/include"/>
 									<listOptionValue builtIn="false" value="../os/stm32L4xx"/>
-									<listOptionValue builtIn="false" value="../kl_lib"/>
-									<listOptionValue builtIn="false" value="../usb"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.interwork.665378352" name="Mix ARM/Thumb" superClass="com.atollic.truestudio.common_options.target.interwork"/>
 								<inputType id="com.atollic.truestudio.as.input.1675861944" name="Input" superClass="com.atollic.truestudio.as.input"/>
@@ -192,6 +190,7 @@
 									<listOptionValue builtIn="false" value="../os/stm32L4xx"/>
 									<listOptionValue builtIn="false" value="../kl_lib"/>
 									<listOptionValue builtIn="false" value="../usb"/>
+									<listOptionValue builtIn="false" value="../Filesys"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.endianess.1201195532" name="Endianess" superClass="com.atollic.truestudio.common_options.target.endianess" useByScannerDiscovery="false"/>
 								<option id="com.atollic.truestudio.common_options.target.mcpu.1733017137" name="Microcontroller" superClass="com.atollic.truestudio.common_options.target.mcpu" useByScannerDiscovery="false" value="STM32L476RC" valueType="enumerated"/>
@@ -226,6 +225,7 @@
 									<listOptionValue builtIn="false" value="../os/stm32L4xx"/>
 									<listOptionValue builtIn="false" value="../kl_lib"/>
 									<listOptionValue builtIn="false" value="../usb"/>
+									<listOptionValue builtIn="false" value="../Filesys"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.endianess.442260110" name="Endianess" superClass="com.atollic.truestudio.common_options.target.endianess" useByScannerDiscovery="false"/>
 								<option id="com.atollic.truestudio.common_options.target.mcpu.1196588533" name="Microcontroller" superClass="com.atollic.truestudio.common_options.target.mcpu" useByScannerDiscovery="false" value="STM32L476RC" valueType="enumerated"/>
@@ -311,9 +311,6 @@
 									<listOptionValue builtIn="false" value="../os/hal"/>
 									<listOptionValue builtIn="false" value="../os/include"/>
 									<listOptionValue builtIn="false" value="../os/stm32L4xx"/>
-									<listOptionValue builtIn="false" value="../kl_lib"/>
-									<listOptionValue builtIn="false" value="../sd"/>
-									<listOptionValue builtIn="false" value="../usb"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.interwork.1670061208" name="Mix ARM/Thumb" superClass="com.atollic.truestudio.common_options.target.interwork" useByScannerDiscovery="false"/>
 								<inputType id="com.atollic.truestudio.as.input.502728240" name="Input" superClass="com.atollic.truestudio.as.input"/>
@@ -331,6 +328,7 @@
 									<listOptionValue builtIn="false" value="../kl_lib"/>
 									<listOptionValue builtIn="false" value="../sd"/>
 									<listOptionValue builtIn="false" value="../usb"/>
+									<listOptionValue builtIn="false" value="../Filesys"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.endianess.2002797244" name="Endianess" superClass="com.atollic.truestudio.common_options.target.endianess" useByScannerDiscovery="false"/>
 								<option id="com.atollic.truestudio.common_options.target.mcpu.254361480" name="Microcontroller" superClass="com.atollic.truestudio.common_options.target.mcpu" useByScannerDiscovery="false" value="STM32L476RC" valueType="enumerated"/>
@@ -368,6 +366,7 @@
 									<listOptionValue builtIn="false" value="../sd"/>
 									<listOptionValue builtIn="false" value="../usb"/>
 									<listOptionValue builtIn="false" value="../Audio/Mixer"/>
+									<listOptionValue builtIn="false" value="../Filesys"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.endianess.1235914050" name="Endianess" superClass="com.atollic.truestudio.common_options.target.endianess" useByScannerDiscovery="false"/>
 								<option id="com.atollic.truestudio.common_options.target.mcpu.533596651" name="Microcontroller" superClass="com.atollic.truestudio.common_options.target.mcpu" useByScannerDiscovery="false" value="STM32L476RC" valueType="enumerated"/>

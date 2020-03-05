@@ -9,6 +9,7 @@
 #include "Sequences.h"
 #include <vector>
 #include "adcL476.h"
+#include "kl_fs_utils.h"
 
 #if 1 // ======================== Variables & prototypes =======================
 // Forever
@@ -21,9 +22,17 @@ void ITask();
 
 bool UsbIsConnected = false;
 static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic}; // Measure battery periodically
-#endif
 
-#if 1 // ==== LEDs ====
+// ==== Settings ====
+FATFS FlashFS;
+class Settings_t {
+private:
+
+public:
+    void Load() {}
+} Settings;
+
+// ==== LEDs ====
 #define LED_FREQ_HZ     630
 LedBlinker_t LedInd{LED_INDICATION};
 std::vector<LedSmoothWBrt_t> Leds = {
@@ -33,11 +42,9 @@ std::vector<LedSmoothWBrt_t> Leds = {
         {LED4_PIN, LED_FREQ_HZ},
         {LED5_PIN, LED_FREQ_HZ},
 };
-#endif // LEDs
 
-#if 1 // ADC
+// ==== ADC ====
 void OnAdcDoneI();
-
 const AdcSetup_t AdcSetup = {
         .SampleTime = ast24d5Cycles,
         .Oversampling = AdcSetup_t::oversmp8,
@@ -97,9 +104,13 @@ int main(void) {
     // ==== Leds ====
     LedInd.Init();
     LedInd.StartOrRestart(lsqIdle);
-    for(LedSmoothWBrt_t &Led : Leds) {
-        Led.Init();
-    }
+    for(LedSmoothWBrt_t &Led : Leds) Led.Init();
+
+    // Init filesystem
+    FRESULT err;
+    err = f_mount(&FlashFS, "", 0);
+    if(err == FR_OK) Settings.Load();
+    else Printf("FS error\r");
 
     UsbMsd.Init();
     SimpleSensors::Init();
