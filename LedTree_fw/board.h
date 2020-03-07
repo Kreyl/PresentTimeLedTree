@@ -50,6 +50,7 @@
 #define LED_SMOOTH_MAX_BRT      257UL
 #define LED_INDICATION  GPIOB, 0, omPushPull
 #define LED_MAX_VALUE   (255UL * LED_SMOOTH_MAX_BRT) // Top brightness value
+#define LEDS_CNT        5
 #define LED1_PIN        { GPIOB, 5, TIM3, 2, invNotInverted, omPushPull, LED_MAX_VALUE }
 #define LED2_PIN        { GPIOB, 6, TIM4, 1, invNotInverted, omPushPull, LED_MAX_VALUE }
 #define LED3_PIN        { GPIOB, 7, TIM4, 2, invNotInverted, omPushPull, LED_MAX_VALUE }

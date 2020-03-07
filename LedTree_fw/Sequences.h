@@ -21,6 +21,14 @@ const BaseChunk_t lsqCmd[] = {
         {csSetup, 1},
         {csEnd}
 };
+
+const BaseChunk_t lsqError[] = {
+        {csSetup, 0},
+        {csWait, 36},
+        {csSetup, 1},
+        {csWait, 36},
+        {csGoto, 0}
+};
 #endif
 
 #if 0 // ============================ LED RGB ==================================

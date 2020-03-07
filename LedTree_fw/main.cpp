@@ -10,6 +10,8 @@
 #include <vector>
 #include "adcL476.h"
 #include "kl_fs_utils.h"
+#include "TreeLeds.h"
+#include "Settings.h"
 
 #if 1 // ======================== Variables & prototypes =======================
 // Forever
@@ -23,25 +25,8 @@ void ITask();
 bool UsbIsConnected = false;
 static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic}; // Measure battery periodically
 
-// ==== Settings ====
 FATFS FlashFS;
-class Settings_t {
-private:
-
-public:
-    void Load() {}
-} Settings;
-
-// ==== LEDs ====
-#define LED_FREQ_HZ     630
 LedBlinker_t LedInd{LED_INDICATION};
-std::vector<LedSmoothWBrt_t> Leds = {
-        {LED1_PIN, LED_FREQ_HZ},
-        {LED2_PIN, LED_FREQ_HZ},
-        {LED3_PIN, LED_FREQ_HZ},
-        {LED4_PIN, LED_FREQ_HZ},
-        {LED5_PIN, LED_FREQ_HZ},
-};
 
 // ==== ADC ====
 void OnAdcDoneI();
@@ -101,15 +86,22 @@ int main(void) {
         Flash::DisableDualbank();   // Will reset inside
     }
 
+    // Seed pseudorandom generator with truly random seed
+    Random::TrueInit();
+    Random::SeedWithTrue();
+    Random::TrueDeinit();
+
     // ==== Leds ====
     LedInd.Init();
     LedInd.StartOrRestart(lsqIdle);
-    for(LedSmoothWBrt_t &Led : Leds) Led.Init();
+    LedsInit();
 
     // Init filesystem
     FRESULT err;
     err = f_mount(&FlashFS, "", 0);
-    if(err == FR_OK) Settings.Load();
+    if(err == FR_OK) {
+        if(Settings.Load() != retvOk) LedInd.StartOrRestart(lsqError);
+    }
     else Printf("FS error\r");
 
     UsbMsd.Init();
@@ -139,13 +131,12 @@ void ITask() {
 //                Printf("Second\r");
                 break;
 
-            case evtIdADC: {
-                // Convert [0;4095] to [0; 255]
-                uint32_t Brt = (Msg.Value * LED_SMOOTH_MAX_BRT) / 4096;
+            case evtIdADC:
 //                PrintfI("ADC: %u; Brt: %u\r", Msg.Value, Brt);
 //                PrintfI("ADC: %u\r", Msg.Value);
-                for(LedSmoothWBrt_t &Led : Leds) Led.SetBrightness(Brt);
-            } break;
+                // Convert [0;4095] to [0; 255]
+                LedsSetBrt((Msg.Value * LED_SMOOTH_MAX_BRT) / 4096UL);
+                break;
 
 #if 1       // ======= USB =======
             case evtIdUsbConnect:
@@ -191,17 +182,16 @@ void OnCmd(Shell_t *PShell) {
 
     else if(PCmd->NameIs("Set")) {
         uint32_t indx, value;
-        if(PCmd->GetNext<uint32_t>(&indx)  != retvOk or indx >= Leds.size()) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint32_t>(&indx)  != retvOk or indx >= LEDS_CNT) { PShell->Ack(retvCmdError); return; }
         if(PCmd->GetNext<uint32_t>(&value) != retvOk) { PShell->Ack(retvCmdError); return; }
-        Leds[indx].Set(value);
+        LedsSet(indx, value);
         PShell->Ack(retvOk);
     }
 
     else if(PCmd->NameIs("Brt")) {
-        uint32_t indx, brt;
-        if(PCmd->GetNext<uint32_t>(&indx)  != retvOk or indx >= Leds.size()) { PShell->Ack(retvCmdError); return; }
+        uint32_t brt;
         if(PCmd->GetNext<uint32_t>(&brt) != retvOk) { PShell->Ack(retvCmdError); return; }
-        Leds[indx].SetBrightness(brt);
+        LedsSetBrt(brt);
         PShell->Ack(retvOk);
     }
 
