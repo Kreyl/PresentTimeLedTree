@@ -93,7 +93,7 @@ int main(void) {
     // ==== Leds ====
     LedInd.Init();
     LedInd.StartOrRestart(lsqIdle);
-    LedsInit();
+//    LedsInit();
 
     // Init filesystem
     FRESULT err;
@@ -130,7 +130,7 @@ void ITask() {
                 if(abs(Msg.Value - AdcOld) > 9) {
 //                    PrintfI("ADC: %u\r", Msg.Value);
                     // Convert [0;4095] to [0; 255]
-                    LedsSetBrt((Msg.Value * LED_SMOOTH_MAX_BRT) / 4096UL);
+//                    LedsSetBrt((Msg.Value * LED_SMOOTH_MAX_BRT) / 4096UL);
                 }
                 break;
 
