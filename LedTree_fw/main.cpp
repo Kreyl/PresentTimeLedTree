@@ -41,7 +41,14 @@ const AdcSetup_t AdcSetup = {
 
 
 int main(void) {
-    // Setup clock frequency
+    // Start Watchdog. Will reset in main thread by periodic 1 sec events.
+    Iwdg::InitAndStart(4500);
+    Iwdg::DisableInDebug();
+    // ==== Setup clock frequency ====
+    // First, switch to MSI if clock src is not MSI
+    if((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_MSI) Clk.SwitchToMSI();
+    Clk.DisablePLL();
+    Clk.DisableSai1();
     if(Clk.EnableHSE() == retvOk) {
         Clk.SetVoltageRange(mvrHiPerf);
         Clk.SetupFlashLatency(64, mvrHiPerf);
@@ -52,7 +59,7 @@ int main(void) {
             Clk.SwitchToPLL();
         }
         // 48MHz clock for USB & 24MHz clock for ADC
-        Clk.SetupPllSai1(8, 4, 2, 7); // 12 * 8 = 96; R = 96 / 4 = 24, Q = 96 / 2 = 48
+        Clk.SetupPllSai1(24, 4, 2, 7); // (12/3 = 4) * 24 = 96; R = 96 / 4 = 24, Q = 96 / 2 = 48
         if(Clk.EnableSai1() == retvOk) {
             // Setup Sai1R as ADC source
             Clk.EnableSai1ROut();
@@ -62,7 +69,7 @@ int main(void) {
             // Setup Sai1Q as 48MHz source
             Clk.EnableSai1QOut();
             tmp &= ~RCC_CCIPR_CLK48SEL;
-            tmp |= ((uint32_t)src48PllSai1Q) << 26;
+            tmp |= 0b01UL << 26;
             RCC->CCIPR = tmp;
         }
     }
@@ -90,10 +97,8 @@ int main(void) {
     Random::SeedWithTrue();
     Random::TrueDeinit();
 
-    // ==== Leds ====
     LedInd.Init();
     LedInd.StartOrRestart(lsqIdle);
-//    LedsInit();
 
     // Init filesystem
     FRESULT err;
@@ -103,6 +108,7 @@ int main(void) {
     }
     else Printf("FS error\r");
 
+    LedsInit();
     UsbMsd.Init();
     SimpleSensors::Init();
     // Inner ADC
@@ -127,10 +133,12 @@ void ITask() {
                 break;
 
             case evtIdADC:
+                Iwdg::Reload();
                 if(abs(Msg.Value - AdcOld) > 9) {
+                    AdcOld = Msg.Value;
 //                    PrintfI("ADC: %u\r", Msg.Value);
                     // Convert [0;4095] to [0; 255]
-//                    LedsSetBrt((Msg.Value * LED_SMOOTH_MAX_BRT) / 4096UL);
+                    LedsSetBrt((Msg.Value * LED_SMOOTH_MAX_BRT) / 4096UL);
                 }
                 break;
 
@@ -142,6 +150,7 @@ void ITask() {
             case evtIdUsbDisconnect:
                 UsbMsd.Disconnect();
                 Printf("USB disconnect\r");
+                if(Settings.Load() != retvOk) LedInd.StartOrRestart(lsqError);
                 break;
             case evtIdUsbReady:
                 Printf("USB ready\r");

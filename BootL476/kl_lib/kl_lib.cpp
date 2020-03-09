@@ -423,25 +423,17 @@ void PinOutputPWM_t::Init() const {
 void Timer_t::SetUpdateFrequencyChangingPrescaler(uint32_t FreqHz) const {
     // Figure out input timer freq
     uint32_t UpdFreqMax = Clk.GetTimInputFreq(ITmr) / (ITmr->ARR + 1);
-    uint32_t Psc = UpdFreqMax / FreqHz;
-    if(Psc != 0) Psc--;
+    uint32_t div = UpdFreqMax / FreqHz;
+    if(div != 0) div--;
 //    Uart.Printf("InputFreq=%u; UpdFreqMax=%u; div=%u; ARR=%u\r", InputFreq, UpdFreqMax, div, ITmr->ARR);
-    ITmr->PSC = Psc;
+    ITmr->PSC = div;
     ITmr->CNT = 0;  // Reset counter to start from scratch
 }
 
 void Timer_t::SetUpdateFrequencyChangingTopValue(uint32_t FreqHz) const {
-    uint32_t UpdFreqMax = Clk.GetTimInputFreq(ITmr) / (ITmr->PSC + 1);
-    uint32_t TopVal  = (UpdFreqMax / FreqHz);
-    if(TopVal != 0) TopVal--;
+    uint32_t TopVal  = (Clk.GetTimInputFreq(ITmr) / FreqHz) - 1;
+//    Uart.Printf("Topval = %u\r", TopVal);
     SetTopValue(TopVal);
-    ITmr->CNT = 0;  // Reset counter to start from scratch
-}
-
-void Timer_t::SetUpdateFrequencyChangingBoth(uint32_t FreqHz) const {
-    uint32_t Psc = (Clk.GetTimInputFreq(ITmr) / FreqHz) / 0x10000;
-    ITmr->PSC = Psc;
-    SetUpdateFrequencyChangingTopValue(FreqHz);
 }
 #endif
 
@@ -506,6 +498,8 @@ void ClearPendingFlags() {
     FLASH->SR = FLASH_SR_EOP | FLASH_SR_PGAERR | FLASH_SR_WRPERR;
 #elif defined STM32L4XX
     FLASH->SR = FLASH_SR_EOP | FLASH_SR_PROGERR | FLASH_SR_WRPERR;
+#elif defined STM32F2XX
+
 #elif defined STM32F7XX
 
 #else
@@ -597,6 +591,8 @@ void UnlockFlash() {
 void LockFlash() {
 #if defined STM32L1XX
     FLASH->PECR |= FLASH_PECR_PRGLOCK;
+#elif defined STM32F2XX
+
 #else
     WaitForLastOperation(FLASH_ProgramTimeout);
     FLASH->CR |= FLASH_CR_LOCK;
@@ -631,6 +627,8 @@ uint8_t ErasePage(uint32_t PageAddress) {
         status = WaitForLastOperation(FLASH_EraseTimeout);
         FLASH->CR &= ~FLASH_CR_PER; // Disable the PageErase Bit
         chSysUnlock();
+#elif defined STM32F2XX
+
 #elif defined STM32F7XX
 
 #else
@@ -1247,7 +1245,7 @@ uint8_t TryStrToFloat(char* S, float *POutput) {
 }; // namespace
 #endif
 
-#if 1 // ============================== IWDG ===================================
+#if 0 // ============================== IWDG ===================================
 namespace Iwdg {
 enum Pre_t {
     iwdgPre4 = 0x00,
@@ -1462,7 +1460,6 @@ uint8_t Clk_t::SwitchToHSE() {
 
 // Enables HSE, enables PLL, switches to PLL
 uint8_t Clk_t::SwitchToPLL() {
-    if(EnableHSE() != 0) return 1;
     if(EnablePLL() != 0) return 2;
     // Select PLL as system clock src
     RCC->CFGR |= RCC_CFGR_SW_PLL;
@@ -1490,7 +1487,6 @@ uint8_t Clk_t::SetupPLLDividers(PllMul_t PllMul, PllDiv_t PllDiv) {
     tmp &= RCC_CFGR_PLLDIV | RCC_CFGR_PLLMUL;
     tmp |= ((uint32_t)PllDiv) << 22;
     tmp |= ((uint32_t)PllMul) << 18;
-    tmp |= RCC_CFGR_PLLSRC_HSE;
     RCC->CFGR = tmp;
     return 0;
 }

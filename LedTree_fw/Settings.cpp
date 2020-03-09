@@ -27,5 +27,8 @@ uint8_t Settings_t::Load() {
         MaxPeriod = v2;
     }
     else Rslt = retvBadValue;
+    Printf("Settings:\r\n  TurnOnMaxPause=%d\r\n  MinValue=%d\r\n  MaxValue=%d\r\n  MinPeriod=%d\r\n  MaxPeriod=%d\r\n",
+            TurnOnMaxPause, MinValue, MaxValue, MinPeriod, MaxPeriod);
+
     return Rslt;
 }
