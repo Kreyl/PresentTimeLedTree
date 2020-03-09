@@ -7,13 +7,16 @@
 
 #pragma once
 
+#include <inttypes.h>
+
 class Settings_t {
 private:
 
 public:
-    uint32_t TurnOnMaxPause = 900;
-    uint32_t MinValue = 0;
-    uint32_t MaxValue = 255;
+    int32_t TurnOnMaxPause = 0;
+    int32_t MinValue = 7;
+    int32_t MaxValue = 255;
+    int32_t MinPeriod = 1800, MaxPeriod = 3600;
     uint8_t Load();
 };
 

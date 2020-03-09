@@ -23,7 +23,6 @@ void OnCmd(Shell_t *PShell);
 void ITask();
 
 bool UsbIsConnected = false;
-static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic}; // Measure battery periodically
 
 FATFS FlashFS;
 LedBlinker_t LedInd{LED_INDICATION};
@@ -106,7 +105,6 @@ int main(void) {
 
     UsbMsd.Init();
     SimpleSensors::Init();
-    TmrOneSecond.StartOrRestart();
     // Inner ADC
     Adc.Init(AdcSetup);
     Adc.EnableVref();
@@ -118,6 +116,7 @@ int main(void) {
 
 __noreturn
 void ITask() {
+    int32_t AdcOld = 0xFFFFFF;
     while(true) {
         EvtMsg_t Msg = EvtQMain.Fetch(TIME_INFINITE);
         switch(Msg.ID) {
@@ -127,15 +126,12 @@ void ITask() {
                 LedInd.StartOrRestart(lsqCmd);
                 break;
 
-            case evtIdEverySecond:
-//                Printf("Second\r");
-                break;
-
             case evtIdADC:
-//                PrintfI("ADC: %u; Brt: %u\r", Msg.Value, Brt);
-//                PrintfI("ADC: %u\r", Msg.Value);
-                // Convert [0;4095] to [0; 255]
-                LedsSetBrt((Msg.Value * LED_SMOOTH_MAX_BRT) / 4096UL);
+                if(abs(Msg.Value - AdcOld) > 9) {
+//                    PrintfI("ADC: %u\r", Msg.Value);
+                    // Convert [0;4095] to [0; 255]
+                    LedsSetBrt((Msg.Value * LED_SMOOTH_MAX_BRT) / 4096UL);
+                }
                 break;
 
 #if 1       // ======= USB =======

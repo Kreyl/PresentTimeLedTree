@@ -10,9 +10,9 @@
 #include "kl_lib.h"
 #include <vector>
 #include "Settings.h"
+#include "shell.h"
 
 #define LED_FREQ_HZ     630
-#define LED_MAX_VALUE   255
 
 #if 1 // ==== Leds Q ====
 EvtMsgQ_t<EvtMsg_t, 18> LedsMsgQ;
@@ -22,45 +22,50 @@ EvtMsgQ_t<EvtMsg_t, 18> LedsMsgQ;
 #endif
 
 #if 1 // ============ LED class =============
-enum Stage_t {stg1, stg2, stg3, stg4};
+enum Stage_t {stgPause, stg1, stg2};
 
-void LedsTmrHandler(void *p);
+float TPeriodLeft[LEDS_CNT];
+float TPeriodGood[LEDS_CNT];
+
+class BigLed_t;
+extern std::vector<BigLed_t> Leds;
 
 /* === Profile ===
-                _____ V3
-               /     \
-         t1   /  t3   \
-    V1 ______/         \ V4
-             [t2]   [t4]
+           VMax
+          /\
+         /  \
+        /    \
+ VStart/      \ Vend
+       TPeriod
 */
 
 class BigLed_t {
 private:
     const PinOutputPWM_t IChnl;
-    uint32_t ICurrentValue;
+//    const int32_t IIndx;
+    float ICurrentValue;
     const uint32_t PWMFreq;
-    uint32_t CurrBrt = LED_SMOOTH_MAX_BRT;
+    float CurrBrt = LED_SMOOTH_MAX_BRT;
     void SetCurrent() {
         // CurrBrt=[0;LED_SMOOTH_MAX_BRT]; ICurrentValue=[0;255]
-        IChnl.Set(ICurrentValue * CurrBrt);
+        float x = ICurrentValue;
+        float y = 0.000012*x*x*x + 0.00097*x*x - 0.035*x + 0.315;
+        y = y  * CurrBrt;
+        IChnl.Set((int32_t)y);
+//        Printf("Curr: %f\r", y);
     }
-    void SetupDelay(uint32_t Delay_ms)  { chVTSet (&ITmr, TIME_MS2I(Delay_ms), LedsTmrHandler, this); }
-    void SetupDelayI(uint32_t Delay_ms) { chVTSetI(&ITmr, TIME_MS2I(Delay_ms), LedsTmrHandler, this); }
     // Profile
     Stage_t Stage;
-    uint32_t t1, Value1=0;
-    uint32_t t2[LED_MAX_VALUE+1];
-    uint32_t t3, Value3=LED_MAX_VALUE;
-    uint32_t t4[LED_MAX_VALUE+1], Value4;
-    virtual_timer_t ITmr;
+    float VMax, VEnd;
+    float Tick, TickEnd;
+    float a1, b1, a2, b2;
     void IConstructProfValues() {
-        uint32_t HalfValue = Settings.MaxValue - Settings.MinValue;
-        Value1 = Value4; // Start from what we stopped at
-        Value3 = Random::Generate(HalfValue, Settings.MaxValue);
-        Value4 = Random::Generate(Settings.MinValue, HalfValue);
+        uint32_t HalfValue = Settings.MinValue + (Settings.MaxValue - Settings.MinValue) / 2;
+        VMax = Random::Generate(HalfValue, Settings.MaxValue);
+        VEnd = Random::Generate(Settings.MinValue, HalfValue);
     }
-
 public:
+    float TPeriod;
     BigLed_t(const PwmSetup_t APinSetup, const uint32_t AFreq = 0xFFFFFFFF) :
         IChnl(APinSetup), ICurrentValue(0), PWMFreq(AFreq) {}
     void Init() {
@@ -72,66 +77,103 @@ public:
         CurrBrt = NewBrt;
         SetCurrent();
     }
-    void Set(uint32_t AValue) {
+    void Set(int32_t AValue) {
         ICurrentValue = AValue;
         SetCurrent();
     }
 
-    void ConstructProfile() {
-        IConstructProfValues();
-
-
-    }
-
-    void ConstructFirstProfile() {
-        IConstructProfValues(); // As always
-        Value1 = 0; // Off initially
-        // Time
-        t1 = Random::Generate(0, Settings.TurnOnMaxPause);
-    }
-
-    void StartProfile() {
+    void ConstructAndStartProfile() {
+//        Printf("%S\r", __FUNCTION__);
         Stage = stg1;
-        Set(Value1);
-        SetupDelay(t1);
+        Tick = 0;
+        float VStart = VEnd;
+        IConstructProfValues(); // As always
+        // Get min and max times left
+        bool AllAreOut = true;
+        for(uint32_t i=0; i<Leds.size(); i++) {
+            Printf("%d; ", (int32_t)TPeriodLeft[i]);
+            if(TPeriodLeft[i] >= (Settings.MinPeriod / 2) and TPeriodLeft[i] <= (Settings.MaxPeriod / 2)) {
+                AllAreOut = false;
+                break;
+            }
+        }
+        if(AllAreOut) {
+            TPeriod = Random::Generate(Settings.MinPeriod, Settings.MaxPeriod);
+            Printf("T1: %d\r", (int32_t)TPeriod);
+        }
+        else {
+            // Get good periods
+            float *p = TPeriodGood;
+            for(uint32_t i=0; i<Leds.size(); i++) {
+                float Per = 2 * TPeriodLeft[i];
+                if(Per >= Settings.MinPeriod and Per <= Settings.MaxPeriod) {
+                    *p++ = Per;
+                }
+            }
+            // Select random good period
+            uint32_t GoodPerCnt = p - TPeriodGood;
+            int32_t Indx = Random::Generate(0, GoodPerCnt-1);
+            TPeriod = TPeriodGood[Indx];
+            Printf("T2: %d\r", (int32_t)TPeriod);
+        }
+        // Calculate coeffs
+        a1 = 2 * (VMax - VStart) / TPeriod;
+        b1 = VStart;
+        a2 = 2 * (VEnd - VMax) / TPeriod;
+        b2 = VMax;
     }
 
-    void OnTickI() {
+    void ConstructAndStartFirstProfile() {
+        Stage = stgPause;
+        Tick = 0;
+        IConstructProfValues(); // As always
+        TickEnd = Random::Generate(0, Settings.TurnOnMaxPause);
+        TPeriod = Random::Generate(Settings.MinPeriod, Settings.MaxPeriod);
+        a1 = 2 * VMax / TPeriod;
+        b1 = 0;
+        a2 = 2 * (VEnd - VMax) / TPeriod;
+        b2 = VMax;
+        ICurrentValue = 0; // Off initially
+        SetCurrent();
+    }
+
+    void OnTick() {
+        Tick++;
+        TPeriod--;
+        float VNow;
         switch(Stage) {
-            case stg1: // Stage1 ended, start next
-            case stg2: // Stage2 is now
-                if(ICurrentValue < LED_SMOOTH_MAX_BRT) ICurrentValue++;
-                if(ICurrentValue < Value3) {
-                    Stage = stg2;
-                    SetupDelayI(t2[ICurrentValue]);
-                }
-                else { // Already at Stage3
-                    Stage = stg3;
-                    SetupDelayI(t3);
+            case stgPause: // Pause ended, start stage1
+                if(Tick >= TickEnd) {
+                    Stage = stg1;
+                    Tick = 0;
                 }
                 break;
 
-            case stg3: // Stage3 ended, start next
-            case stg4: // Stage4 is now
-                if(ICurrentValue > 0) ICurrentValue--;
-                if(ICurrentValue > Value4) {
-                    Stage = stg4;
-                    SetupDelayI(t4[ICurrentValue]);
+            case stg1:
+                VNow = a1 * Tick + b1;
+                if(VNow < VMax) {
+                    ICurrentValue = VNow;
+                    SetCurrent();
                 }
-                else { // Already at end of Stage4, construct new profile
-                    LedsMsgQ.SendNowOrExitI(EvtMsg_t(LEDS_CONSTRUCT_PROFILE_CMD, (void*)this));
+                else {
+                    Stage = stg2; // VMax reached
+                    Tick = 0;
+                }
+                break;
+
+            case stg2:
+                VNow = a2 * Tick + b2;
+                if(ICurrentValue > VEnd) {
+                    ICurrentValue = VNow;
+                    SetCurrent();
+                }
+                else { // end of Stage2, construct new profile
+                    LedsMsgQ.SendNowOrExit(EvtMsg_t(LEDS_CONSTRUCT_PROFILE_CMD, (void*)this));
                 }
                 break;
         } // switch
-        SetCurrent();
     }
 };
-
-void LedsTmrHandler(void *p) {
-    chSysLockFromISR();
-    ((BigLed_t*)p)->OnTickI();
-    chSysUnlockFromISR();
-}
 
 std::vector<BigLed_t> Leds = {
         {LED1_PIN, LED_FREQ_HZ},
@@ -148,7 +190,9 @@ static void LedsThread(void *arg) {
     chRegSetThreadName("PinSensors");
     EvtMsg_t msg;
     while(true) {
-        EvtMsg_t msg = LedsMsgQ.Fetch(TIME_INFINITE);
+        chThdSleepMilliseconds(1);
+        msg.ID = 0; // Nothing
+        EvtMsg_t msg = LedsMsgQ.Fetch(TIME_IMMEDIATE);
         switch(msg.ID) {
             case LEDS_SET_BRT_CMD:
                 for(BigLed_t &Led : Leds) Led.SetBrightness(msg.Value);
@@ -156,20 +200,23 @@ static void LedsThread(void *arg) {
 
             case LEDS_CONSTRUCT_PROFILE_CMD: {
                 BigLed_t* PLed = (BigLed_t*)msg.Ptr;
-                PLed->ConstructProfile();
-                PLed->StartProfile();
+                PLed->ConstructAndStartProfile();
             } break;
 
             default: break;
         } // switch
+        for(uint32_t i=0; i<Leds.size(); i++) {
+            Leds[i].OnTick();
+            TPeriodLeft[i] = Leds[i].TPeriod; // Save time left from period
+        }
     } // while true
 }
 
 void LedsInit() {
+    LedsMsgQ.Init();
     for(BigLed_t &Led : Leds) {
         Led.Init();
-        Led.ConstructFirstProfile();
-        Led.StartProfile();
+        Led.ConstructAndStartFirstProfile();
     }
     // Create and start thread
     chThdCreateStatic(waLedsThread, sizeof(waLedsThread), NORMALPRIO, (tfunc_t)LedsThread, NULL);

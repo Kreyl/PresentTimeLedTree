@@ -123,6 +123,7 @@ public:
     uint8_t SendNowOrExitI(const T &Msg) {
         if(chSemGetCounterI(&EmptySem) <= (cnt_t)0) {
             PrintfI("QOvrflw\r");
+            while(true); // XXX
             return retvOverflow; // Q is full
         }
         chSemFastWaitI(&EmptySem);
